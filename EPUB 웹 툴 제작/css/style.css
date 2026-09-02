@@ -591,10 +591,14 @@ body {
     .nav-badge { right: calc(50% - 18px) !important; font-size: 0.68rem !important; padding: 1px 5px !important; top: 5px !important; }
 
     .toast-msg {
+        top: auto !important;
+        bottom: 64px !important;
+        width: auto !important;
+        max-width: 90vw !important;
         font-size: 0.85rem !important;
         padding: 8px 16px !important;
         border-radius: 6px !important;
-        bottom: 64px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
     }
     .toast-time { font-size: 0.78rem !important; }
 
