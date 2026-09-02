@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>EPUB 전자책 제작 스튜디오 (v2.1.7)</title>
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- App Styles -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- JSZip for EPUB compression -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+    <!-- Top Header -->
+    <header class="app-header">
+        <div class="header-top">
+            <div class="app-title">
+                <i class="fa-solid fa-book-open-reader" style="color: #2563eb;"></i>
+                <span>EPUB Studio</span>
+                <span class="app-version">v2.1.7</span>
+                <span id="uiModeBadge" class="ui-mode-badge">[감지 중...]</span>
+            </div>
+            <div class="header-right-action">
+                <button id="btnOpenPublishModal" class="btn btn-export" title="도서 메타데이터 설정 후 EPUB 전자책을 생성합니다">
+                    <i class="fa-solid fa-file-export"></i> <span>전자책 생성</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Top Core Toolbar (Editor-focused: Load / Analyze / Add) -->
+        <div class="toolbar">
+            <div class="toolbar-scroll-container">
+                <!-- 파일 불러오기 -->
+                <button id="btnLoadFile" class="btn btn-load" title="TXT 파일 열기">
+                    <i class="fa-regular fa-folder-open"></i> <span>파일 불러오기</span>
+                </button>
+                <input type="file" id="fileInput" accept=".txt" style="display: none;">
+
+                <!-- 목차 형식 분석 -->
+                <button id="btnLearnPattern" class="btn btn-analyze" title="선택 텍스트 패턴(예: 제1장) 분석하여 전체 목차 자동 생성">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span>목차 형식 분석</span>
+                </button>
+
+                <!-- 선택영역 목차 추가 -->
+                <button id="btnAddManualToc" class="btn btn-manual" title="선택 영역을 수동 목차로 추가">
+                    <i class="fa-solid fa-plus"></i> <span>선택영역 목차 추가</span>
+                </button>
+
+                <!-- PC / 태블릿 가로 전용 확장 툴바 -->
+                <div class="desktop-only-tools">
+                    <button id="btnUpdateToc" class="btn btn-sync" title="본문 수정 시 목차 위치 재동기화">
+                        <i class="fa-solid fa-arrows-rotate"></i> <span>목차 변동 반영</span>
+                    </button>
+                    <button id="btnRemoveToc" class="btn btn-del-single" title="선택한 목차 삭제">
+                        <i class="fa-solid fa-minus"></i> <span>목차 개별 해제</span>
+                    </button>
+                    <button id="btnClearAllToc" class="btn btn-del-all" title="목차 전체 초기화">
+                        <i class="fa-regular fa-trash-can"></i> <span>목차 전체 삭제</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="main-workspace">
+        
+        <!-- Panel 1: TOC List & Management -->
+        <aside id="panelToc" class="workspace-panel panel-toc">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fa-solid fa-list-ol" style="color: #0284c7;"></i>
+                    <span>목차 목록</span>
+                    <span id="tocCountBadge" class="badge">0개</span>
+                </div>
+            </div>
+            
+            <!-- 목차 탭 전용 내부 관리 툴바 -->
+            <div class="toc-sub-toolbar">
+                <button id="btnUpdateTocSub" class="btn btn-sync btn-sm" title="본문 수정 시 목차 위치 재동기화">
+                    <i class="fa-solid fa-arrows-rotate"></i> <span>동기화</span>
+                </button>
+                <button id="btnRemoveTocSub" class="btn btn-del-single btn-sm" title="선택한 목차 삭제">
+                    <i class="fa-solid fa-minus"></i> <span>개별 해제</span>
+                </button>
+                <button id="btnClearAllTocSub" class="btn btn-del-all btn-sm" title="목차 전체 초기화">
+                    <i class="fa-regular fa-trash-can"></i> <span>전체 삭제</span>
+                </button>
+            </div>
+
+            <div id="tocList" class="toc-list">
+                <div class="empty-placeholder">
+                    <i class="fa-solid fa-list-ol"></i>
+                    <p>등록된 목차가 없습니다.<br>본문에서 텍스트를 선택 후<br>'목차 형식 분석' 또는 '선택영역 추가'를 클릭하세요.</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Panel 2: Main Text Editor -->
+        <section id="panelEditor" class="workspace-panel panel-editor active">
+            <div class="panel-header">
+                <span><i class="fa-solid fa-align-left"></i> 본문 에디터</span>
+                <span id="editorStats" class="editor-stats-text">텍스트를 불러오세요</span>
+            </div>
+            <textarea id="textArea" class="editor-textarea" placeholder="여기에 텍스트 파일을 불러오거나 직접 붙여넣으세요...&#10;&#10;[팁]&#10;1. '파일 불러오기'로 소설 TXT 파일을 엽니다.&#10;2. '제1장...' 같은 목차를 마우스/터치로 드래그 후 [목차 형식 분석]을 누르면 전체 목차가 자동 생성됩니다.&#10;3. 목차를 클릭하면 해당 위치 본문으로 즉시 점프합니다."></textarea>
+        </section>
+
+        <!-- Panel 3: Image Library -->
+        <aside id="panelImg" class="workspace-panel panel-img">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fa-regular fa-images" style="color: #16a34a;"></i>
+                    <span>삽화 라이브러리</span>
+                    <span id="imgCountBadge" class="badge">0개</span>
+                </div>
+                <div class="img-controls">
+                    <button id="btnAddImages" class="btn btn-load btn-sm">
+                        <i class="fa-solid fa-upload"></i> <span>추가</span>
+                    </button>
+                    <input type="file" id="imageInput" accept="image/*" multiple style="display: none;">
+                    
+                    <div class="view-mode-toggle">
+                        <label><input type="radio" name="imageViewMode" value="detail" checked> 목록</label>
+                        <label><input type="radio" name="imageViewMode" value="large"> 카드</label>
+                    </div>
+                </div>
+            </div>
+            <div id="imgContainer" class="img-gallery detail-view">
+                <div class="empty-placeholder">
+                    <i class="fa-regular fa-image"></i>
+                    <p>등록된 삽화가 없습니다.<br>'추가' 버튼을 눌러 이미지를 등록하세요.</p>
+                </div>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Mobile / Portrait Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+        <button class="nav-tab active" data-target="panelEditor">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>본문 에디터</span>
+        </button>
+        <button class="nav-tab" data-target="panelToc">
+            <i class="fa-solid fa-list-ol"></i>
+            <span>목차 목록</span>
+            <span id="mobileTocBadge" class="nav-badge">0</span>
+        </button>
+        <button class="nav-tab" data-target="panelImg">
+            <i class="fa-regular fa-images"></i>
+            <span>삽화 보관함</span>
+            <span id="mobileImgBadge" class="nav-badge">0</span>
+        </button>
+    </nav>
+
+    <!-- Toast Notification -->
+    <div id="toastMsg" class="toast-msg">
+        <span id="toastContent">메시지</span>
+        <span id="toastTime" class="toast-time">(3s)</span>
+    </div>
+
+    <!-- Final Publishing Modal -->
+    <div id="publishModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span><i class="fa-solid fa-book" style="color: #2563eb;"></i> 최종 출판 설정</span>
+                <button id="btnClosePublishModal" class="btn-close-modal"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="inputTitle">도서 제목</label>
+                    <input type="text" id="inputTitle" placeholder="도서 제목을 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="inputAuthor">작가명</label>
+                    <input type="text" id="inputAuthor" placeholder="작가명을 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="inputPublisher">출판사</label>
+                    <input type="text" id="inputPublisher" placeholder="출판사를 입력하세요 (선택)">
+                </div>
+                <div class="form-group">
+                    <label for="inputDate">작성일자</label>
+                    <input type="date" id="inputDate">
+                </div>
+                
+                <div class="form-group">
+                    <label>표지 이미지</label>
+                    <div class="cover-select-box">
+                        <img id="coverPreviewImg" class="cover-preview" alt="표지 미리보기">
+                        <div class="cover-info">
+                            <span id="coverPreviewName">선택된 표지 이미지 없음</span>
+                            <button id="btnSelectCover" type="button" class="btn btn-load btn-sm" style="align-self: flex-start;">
+                                <i class="fa-regular fa-image"></i> 이미지 선택
+                            </button>
+                            <input type="file" id="coverInput" accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <button id="btnConfirmExport" class="btn btn-export" style="width: 100%; justify-content: center; padding: 12px; margin-top: 10px; font-size: 1rem;">
+                    <i class="fa-solid fa-check"></i> 전자책 작성 완료 (.epub 다운로드)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Modal -->
+    <div id="progressModal" class="modal-overlay">
+        <div class="modal-card progress-card">
+            <h3 id="progressText" style="font-size: 1rem; color: #0f172a;">처리 중...</h3>
+            <div class="progress-bar-bg">
+                <div id="progressBar" class="progress-bar-fill"></div>
+            </div>
+            <div class="progress-status">
+                <span>진행 상태</span>
+                <span id="progressPercent" style="font-weight: 700; color: #2563eb;">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/epub_generator.js"></script>
+    <script src="js/app.js"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((reg) => console.log('[PWA] Service Worker registered with scope:', reg.scope))
+                    .catch((err) => console.warn('[PWA] Service Worker registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
