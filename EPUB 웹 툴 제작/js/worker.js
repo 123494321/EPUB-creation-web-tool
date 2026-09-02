@@ -90,12 +90,12 @@ async function handleBuildEpub(payload) {
         const chapId = `chap_${chap.isPrologue ? "0000" : String(i).padStart(4, "0")}`;
         const chapTitle = chap.title || (chap.isPrologue ? "프롤로그" : `제 ${i} 장`);
         const chapHtmlContent = processTextToHtml(chap.content);
-        const xhtml = `<?xml version="1.0" encoding="utf-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko"><head><meta charset="utf-8"/><title>${escapeHtml(chapTitle)}</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body><h2>${escapeHtml(chapTitle)}</h2>${chapHtmlContent}</body></html>`;
+        const xhtml = `<?xml version="1.0" encoding="utf-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="ko"><head><meta charset="utf-8"/><title>${escapeHtml(chapTitle)}</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body epub:type="bodymatter"><section id="${chapId}" class="chapter-container" epub:type="chapter" role="doc-chapter"><div id="chapter-top" style="position:relative; top:0; height:1px;"></div><h2>${escapeHtml(chapTitle)}</h2>${chapHtmlContent}<div class="chapter-end-spacer" style="height: 60px; clear: both;"></div></section></body></html>`;
         oebps.file(fileName, xhtml);
         manifestItems.push(`<item id="${chapId}" href="${fileName}" media-type="application/xhtml+xml"/>`);
         spineItems.push(`<itemref idref="${chapId}"/>`);
-        navMapNcx.push(`    <navPoint id="navPoint-${playOrder}" playOrder="${playOrder}"><navLabel><text>${escapeHtml(chapTitle)}</text></navLabel><content src="${fileName}"/></navPoint>`);
-        navListHtml.push(`      <li><a href="${fileName}">${escapeHtml(chapTitle)}</a></li>`);
+        navMapNcx.push(`    <navPoint id="navPoint-${playOrder}" playOrder="${playOrder}"><navLabel><text>${escapeHtml(chapTitle)}</text></navLabel><content src="${fileName}#chapter-top"/></navPoint>`);
+        navListHtml.push(`      <li><a href="${fileName}#chapter-top">${escapeHtml(chapTitle)}</a></li>`);
         playOrder++;
     }
     const navXhtml = `<?xml version="1.0" encoding="utf-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="ko"><head><title>목차</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body><nav epub:type="toc" id="toc"><h2>목차</h2><ol>${navListHtml.join("\n")}</ol></nav></body></html>`;
@@ -106,7 +106,7 @@ async function handleBuildEpub(payload) {
     oebps.file("toc.ncx", tocNcx);
     manifestItems.push(`<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>`);
     const dateStr = metadata.date || new Date().toISOString().split('T')[0];
-    const contentOpf = `<?xml version="1.0" encoding="utf-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0" xml:lang="ko"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf"><dc:identifier id="BookId">${bookUuid}</dc:identifier><dc:title>${escapeHtml(metadata.title || "제목 없음")}</dc:title><dc:language>ko</dc:language><dc:creator id="creator">${escapeHtml(metadata.author || "작자 미상")}</dc:creator><dc:publisher>${escapeHtml(metadata.publisher || "")}</dc:publisher><dc:date>${dateStr}</dc:date><meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d+Z$/, 'Z')}</meta>${hasCover ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestItems.join("\n")}</manifest><spine toc="ncx">${spineItems.join("\n")}</spine></package>`;
+    const contentOpf = `<?xml version="1.0" encoding="utf-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0" xml:lang="ko"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf"><dc:identifier id="BookId">${bookUuid}</dc:identifier><dc:title>${escapeHtml(metadata.title || "제목 없음")}</dc:title><dc:language>ko</dc:language><dc:creator id="creator">${escapeHtml(metadata.author || "작자 미상")}</dc:creator><dc:publisher>${escapeHtml(metadata.publisher || "")}</dc:publisher><dc:date>${dateStr}</dc:date><meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d+Z$/, 'Z')}</meta>${hasCover ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestItems.join("\n")}</manifest><spine toc="ncx" page-progression-direction="ltr">${spineItems.join("\n")}</spine></package>`;
     oebps.file("content.opf", contentOpf);
     self.postMessage({ type: 'PROGRESS', percent: 85, text: '백그라운드 EPUB 압축 중...' });
     const epubArrayBuffer = await zip.generateAsync({ type: "arraybuffer", mimeType: "application/epub+zip", compression: "DEFLATE", compressionOptions: { level: 6 } }, (meta) => {
