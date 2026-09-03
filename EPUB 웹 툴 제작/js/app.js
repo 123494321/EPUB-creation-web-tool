@@ -123,6 +123,18 @@ class EpubApp {
 
         this.setupEditorDrop();
 
+        let inputDebounceTimer = null;
+        this.textArea.addEventListener("input", () => {
+            if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
+            inputDebounceTimer = setTimeout(() => {
+                this.syncViewportToLines();
+            }, 300);
+        });
+        this.textArea.addEventListener("blur", () => {
+            if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
+            this.syncViewportToLines();
+        });
+
         window.addEventListener("resize", () => this.updateUIModeBadge());
         window.addEventListener("orientationchange", () => this.updateUIModeBadge());
 
@@ -171,6 +183,7 @@ class EpubApp {
     }
 
     switchMobileTab(targetPanelId) {
+        this.syncViewportToLines();
         document.querySelectorAll(".workspace-panel").forEach(p => p.classList.remove("active"));
         document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
 
@@ -295,8 +308,9 @@ class EpubApp {
     }
 
     async learnPattern() {
+        this.syncViewportToLines();
         const textInEditor = this.textArea.value;
-        if (!this.fullText && !textInEditor) {
+        if ((!this.lines || this.lines.length === 0) && !textInEditor) {
             alert("본문 내용이 비어있습니다. 먼저 파일을 불러와주세요.");
             return;
         }
@@ -311,7 +325,7 @@ class EpubApp {
         }
 
         this.showProgress("전체 목차 분석 중...", 100);
-        const targetText = this.fullText || textInEditor;
+        const targetText = (this.lines && this.lines.length > 0) ? this.lines.join("\n") : (textInEditor || this.fullText);
 
         if (this.worker) {
             const onMessage = (e) => {
