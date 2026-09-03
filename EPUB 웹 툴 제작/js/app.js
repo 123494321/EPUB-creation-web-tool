@@ -224,9 +224,21 @@ class EpubApp {
         const currentViewportText = this.textArea.value;
         const updatedViewportLines = currentViewportText.split(/\r?\n/);
         const deleteCount = Math.max(0, this.currentViewEnd - this.currentViewStart);
+        const deltaLines = updatedViewportLines.length - deleteCount;
+
         this.lines.splice(this.currentViewStart, deleteCount, ...updatedViewportLines);
         this.totalLines = this.lines.length;
         this.currentViewEnd = this.currentViewStart + updatedViewportLines.length;
+
+        if (deltaLines !== 0 && this.chapters && this.chapters.length > 0) {
+            for (const ch of this.chapters) {
+                if (ch.lineNum > this.currentViewStart + deleteCount) {
+                    ch.lineNum += deltaLines;
+                }
+            }
+            this.refreshTocList();
+        }
+
         if (this.editorStats) {
             this.editorStats.innerHTML = `총 <b>${this.totalLines.toLocaleString()}</b>줄 중 <b>${(this.currentViewStart + 1).toLocaleString()} ~ ${this.currentViewEnd.toLocaleString()}</b>줄 표시 중`;
         }
@@ -324,6 +336,7 @@ class EpubApp {
     }
 
     addManualToc() {
+        this.syncViewportToLines();
         const textInEditor = this.textArea.value;
         const selStart = this.textArea.selectionStart;
         const selEnd = this.textArea.selectionEnd;
@@ -370,6 +383,7 @@ class EpubApp {
     }
 
     updateTocPositions() {
+        this.syncViewportToLines();
         if (!this.chapters || this.chapters.length === 0) {
             this.autoMsg("등록된 목차가 없습니다.");
             return;
