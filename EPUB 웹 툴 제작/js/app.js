@@ -237,23 +237,17 @@ class EpubApp {
         const currentViewportText = this.textArea.value;
         const updatedViewportLines = currentViewportText.split(/\r?\n/);
         const deleteCount = Math.max(0, this.currentViewEnd - this.currentViewStart);
-        const deltaLines = updatedViewportLines.length - deleteCount;
 
         this.lines.splice(this.currentViewStart, deleteCount, ...updatedViewportLines);
         this.totalLines = this.lines.length;
         this.currentViewEnd = this.currentViewStart + updatedViewportLines.length;
 
-        if (deltaLines !== 0 && this.chapters && this.chapters.length > 0) {
-            for (const ch of this.chapters) {
-                if (ch.lineNum > this.currentViewStart + deleteCount) {
-                    ch.lineNum += deltaLines;
-                }
-            }
-            this.refreshTocList();
-        }
-
         if (this.editorStats) {
             this.editorStats.innerHTML = `총 <b>${this.totalLines.toLocaleString()}</b>줄 중 <b>${(this.currentViewStart + 1).toLocaleString()} ~ ${this.currentViewEnd.toLocaleString()}</b>줄 표시 중`;
+        }
+
+        if (this.chapters && this.chapters.length > 0) {
+            this.updateTocPositions(true);
         }
     }
 
@@ -396,31 +390,44 @@ class EpubApp {
         }
     }
 
-    updateTocPositions() {
-        this.syncViewportToLines();
+    updateTocPositions(silent = false) {
         if (!this.chapters || this.chapters.length === 0) {
-            this.autoMsg("등록된 목차가 없습니다.");
+            if (!silent) this.autoMsg("등록된 목차가 없습니다.");
             return;
         }
 
         const newChapters = [];
+        let searchCursor = 0;
         for (const ch of this.chapters) {
-            const title = ch.title;
+            const title = ch.title.trim();
             let foundLine = -1;
 
-            for (let i = 0; i < this.lines.length; i++) {
+            for (let i = searchCursor; i < this.lines.length; i++) {
                 if (this.lines[i].trim() === title || this.lines[i].includes(title)) {
                     foundLine = i + 1;
+                    searchCursor = i + 1;
                     break;
                 }
             }
+
+            if (foundLine === -1) {
+                for (let i = 0; i < this.lines.length; i++) {
+                    if (this.lines[i].trim() === title || this.lines[i].includes(title)) {
+                        foundLine = i + 1;
+                        break;
+                    }
+                }
+            }
+
             if (foundLine !== -1) {
-                newChapters.push({ lineNum: foundLine, title });
+                newChapters.push({ lineNum: foundLine, title: ch.title });
+            } else {
+                newChapters.push(ch);
             }
         }
         this.chapters = newChapters.sort((a, b) => a.lineNum - b.lineNum);
         this.refreshTocList();
-        this.autoMsg("전체 본문에 맞춰 목차 목록이 동기화되었습니다.");
+        if (!silent) this.autoMsg("전체 본문에 맞춰 목차 목록이 동기화되었습니다.");
     }
 
     removeSelectedToc() {
@@ -686,6 +693,7 @@ class EpubApp {
 
     async exportEpub() {
         this.syncViewportToLines();
+        this.updateTocPositions(true);
         this.metaData.title = this.inputTitle.value.trim() || "제목 없음";
         this.metaData.author = this.inputAuthor.value.trim() || "작자 미상";
         this.metaData.publisher = this.inputPublisher.value.trim();

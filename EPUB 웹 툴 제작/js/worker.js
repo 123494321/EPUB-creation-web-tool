@@ -86,9 +86,10 @@ async function handleBuildEpub(payload) {
     let playOrder = 1;
     for (let i = 0; i < chapters.length; i++) {
         const chap = chapters[i];
-        const fileName = chap.isPrologue ? "chap_0000.xhtml" : `chap_${String(i).padStart(4, "0")}.xhtml`;
-        const chapId = `chap_${chap.isPrologue ? "0000" : String(i).padStart(4, "0")}`;
-        const chapTitle = chap.title || (chap.isPrologue ? "프롤로그" : `제 ${i} 장`);
+        const chapNum = i + 1;
+        const fileName = `chap_${String(chapNum).padStart(4, "0")}.xhtml`;
+        const chapId = `chap_${String(chapNum).padStart(4, "0")}`;
+        const chapTitle = chap.title || (chap.isPrologue ? "프롤로그" : `제 ${chapNum} 장`);
         const chapHtmlContent = processTextToHtml(chap.content);
         const xhtml = `<?xml version="1.0" encoding="utf-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="ko"><head><meta charset="utf-8"/><title>${escapeHtml(chapTitle)}</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body epub:type="bodymatter"><section id="${chapId}" class="chapter-container" epub:type="chapter" role="doc-chapter"><div id="chapter-top" style="position:relative; top:0; height:1px;"></div><h2>${escapeHtml(chapTitle)}</h2>${chapHtmlContent}<div class="chapter-end-spacer" style="height: 60px; clear: both;"></div></section></body></html>`;
         oebps.file(fileName, xhtml);
