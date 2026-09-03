@@ -219,7 +219,24 @@ class EpubApp {
         }
     }
 
+    syncViewportToLines() {
+        if (!this.lines || this.lines.length === 0) return;
+        const currentViewportText = this.textArea.value;
+        const updatedViewportLines = currentViewportText.split(/\r?\n/);
+        const deleteCount = Math.max(0, this.currentViewEnd - this.currentViewStart);
+        this.lines.splice(this.currentViewStart, deleteCount, ...updatedViewportLines);
+        this.totalLines = this.lines.length;
+        this.currentViewEnd = this.currentViewStart + updatedViewportLines.length;
+        if (this.editorStats) {
+            this.editorStats.innerHTML = `총 <b>${this.totalLines.toLocaleString()}</b>줄 중 <b>${(this.currentViewStart + 1).toLocaleString()} ~ ${this.currentViewEnd.toLocaleString()}</b>줄 표시 중`;
+        }
+    }
+
     renderViewport(startLine, endLine, focusLocalLine = 0) {
+        if (this.lines && this.lines.length > 0 && this.currentViewEnd > this.currentViewStart && this.textArea.value) {
+            this.syncViewportToLines();
+        }
+
         this.currentViewStart = Math.max(0, startLine);
         this.currentViewEnd = Math.min(this.totalLines, endLine);
 
@@ -556,6 +573,7 @@ class EpubApp {
         const tag = `\n[IMAGE:${imageName}]\n`;
 
         this.textArea.value = text.substring(0, selStart) + tag + text.substring(selEnd);
+        this.syncViewportToLines();
         this.textArea.focus();
         this.textArea.setSelectionRange(selStart + tag.length, selStart + tag.length);
         this.autoMsg(`삽화 태그 [IMAGE:${imageName}] 삽입 완료`);
@@ -581,6 +599,7 @@ class EpubApp {
                 const insertPos = this.textArea.selectionStart;
                 const text = this.textArea.value;
                 this.textArea.value = text.substring(0, insertPos) + data + text.substring(insertPos);
+                this.syncViewportToLines();
                 this.autoMsg("삽화 태그가 본문에 삽입되었습니다.");
             }
         });
@@ -638,6 +657,7 @@ class EpubApp {
     }
 
     async exportEpub() {
+        this.syncViewportToLines();
         this.metaData.title = this.inputTitle.value.trim() || "제목 없음";
         this.metaData.author = this.inputAuthor.value.trim() || "작자 미상";
         this.metaData.publisher = this.inputPublisher.value.trim();
