@@ -211,6 +211,9 @@ class EpubApp {
             this.fullText = decoded.text;
             this.lines = this.fullText.split(/\r?\n/);
             this.totalLines = this.lines.length;
+            this.currentViewStart = 0;
+            this.currentViewEnd = 0;
+            this.textArea.value = "";
 
             this.clearAllToc();
             
@@ -502,6 +505,47 @@ class EpubApp {
         if (this.mobileTocBadge) this.mobileTocBadge.textContent = this.chapters.length;
     }
 
+    async sanitizeImage(file) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || img.width;
+                    canvas.height = img.naturalHeight || img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+
+                    const isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
+                    const mime = isPng ? 'image/png' : 'image/jpeg';
+
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            file.arrayBuffer().then(buf => resolve({ buffer: buf, dataUrl: URL.createObjectURL(file), mime: file.type || 'image/jpeg' }));
+                            return;
+                        }
+                        blob.arrayBuffer().then(buf => {
+                            resolve({
+                                buffer: buf,
+                                dataUrl: URL.createObjectURL(blob),
+                                mime: mime
+                            });
+                        });
+                    }, mime, 0.95);
+                } catch (e) {
+                    file.arrayBuffer().then(buf => resolve({ buffer: buf, dataUrl: URL.createObjectURL(file), mime: file.type || 'image/jpeg' }));
+                }
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                file.arrayBuffer().then(buf => resolve({ buffer: buf, dataUrl: URL.createObjectURL(file), mime: file.type || 'image/jpeg' }));
+            };
+            img.src = url;
+        });
+    }
+
     async handleAddImages(event) {
         const files = Array.from(event.target.files);
         if (!files.length) return;
@@ -510,27 +554,25 @@ class EpubApp {
             if (this.images.some(img => img.name === file.name)) continue;
 
             try {
-                const buffer = await file.arrayBuffer();
-                const dataUrl = URL.createObjectURL(file);
-                
+                const sanitized = await this.sanitizeImage(file);
                 let cleanName = file.name || `image_${Date.now()}.jpg`;
                 if (!cleanName.includes('.')) {
-                    cleanName += file.type === 'image/png' ? '.png' : '.jpg';
+                    cleanName += sanitized.mime === 'image/png' ? '.png' : '.jpg';
                 }
 
                 this.images.push({
                     id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                     name: cleanName,
-                    buffer: buffer,
-                    mime: file.type || 'image/jpeg',
-                    dataUrl: dataUrl
+                    buffer: sanitized.buffer,
+                    mime: sanitized.mime,
+                    dataUrl: sanitized.dataUrl
                 });
             } catch (err) {
                 console.error("이미지 읽기 오류:", err);
             }
         }
         this.refreshImageView();
-        this.autoMsg(`${files.length}개의 삽화가 추가되었습니다.`);
+        this.autoMsg(`${files.length}개의 삽화가 추가되었습니다. (EXIF/위치정보 세탁 완료)`);
         this.imageInput.value = "";
     }
 
@@ -665,24 +707,22 @@ class EpubApp {
         if (!file) return;
 
         try {
-            const buffer = await file.arrayBuffer();
-            const dataUrl = URL.createObjectURL(file);
-
-            const mime = file.type || 'image/jpeg';
+            const sanitized = await this.sanitizeImage(file);
+            const mime = sanitized.mime;
             const ext = mime === 'image/png' ? 'png' : 'jpg';
 
-            this.metaData.coverBuffer = buffer;
+            this.metaData.coverBuffer = sanitized.buffer;
             this.metaData.coverMime = mime;
             this.metaData.coverExt = ext;
             this.metaData.coverName = file.name || `cover.${ext}`;
-            this.metaData.coverDataUrl = dataUrl;
+            this.metaData.coverDataUrl = sanitized.dataUrl;
 
             if (this.coverPreviewName) this.coverPreviewName.textContent = this.metaData.coverName;
             if (this.coverPreviewImg) {
-                this.coverPreviewImg.src = dataUrl;
+                this.coverPreviewImg.src = sanitized.dataUrl;
                 this.coverPreviewImg.style.display = "block";
             }
-            this.autoMsg("표지 이미지가 등록되었습니다.");
+            this.autoMsg("표지 이미지가 등록되었습니다. (EXIF/위치정보 세탁 완료)");
         } catch (err) {
             console.error("표지 읽기 오류:", err);
             alert("표지 이미지를 불러오는 데 실패했습니다: " + (err.message || err));
