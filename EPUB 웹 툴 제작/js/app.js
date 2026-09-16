@@ -91,7 +91,10 @@ class EpubApp {
     }
 
     bindEvents() {
-        this.btnLoadFile.addEventListener("click", () => this.fileInput.click());
+        this.btnLoadFile.addEventListener("click", () => {
+            this.fileInput.value = "";
+            this.fileInput.click();
+        });
         this.fileInput.addEventListener("change", (e) => this.handleFileSelect(e));
 
         this.btnLearnPattern.addEventListener("click", () => this.learnPattern());
@@ -123,15 +126,15 @@ class EpubApp {
 
         this.setupEditorDrop();
 
-        let inputDebounceTimer = null;
+        this.inputDebounceTimer = null;
         this.textArea.addEventListener("input", () => {
-            if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
-            inputDebounceTimer = setTimeout(() => {
+            if (this.inputDebounceTimer) clearTimeout(this.inputDebounceTimer);
+            this.inputDebounceTimer = setTimeout(() => {
                 this.syncViewportToLines();
             }, 300);
         });
         this.textArea.addEventListener("blur", () => {
-            if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
+            if (this.inputDebounceTimer) clearTimeout(this.inputDebounceTimer);
             this.syncViewportToLines();
         });
 
@@ -182,8 +185,8 @@ class EpubApp {
         });
     }
 
-    switchMobileTab(targetPanelId) {
-        this.syncViewportToLines();
+    switchMobileTab(targetPanelId, skipSync = false) {
+        if (!skipSync) this.syncViewportToLines();
         document.querySelectorAll(".workspace-panel").forEach(p => p.classList.remove("active"));
         document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
 
@@ -197,6 +200,11 @@ class EpubApp {
     async handleFileSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
+
+        if (this.inputDebounceTimer) {
+            clearTimeout(this.inputDebounceTimer);
+            this.inputDebounceTimer = null;
+        }
 
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
         this.showProgress(`파일 읽는 중... (${fileSizeMB} MB)`, 100);
@@ -221,8 +229,8 @@ class EpubApp {
             this.metaData.title = defaultTitle;
             if (this.inputTitle) this.inputTitle.value = defaultTitle;
 
-            this.renderViewport(0, Math.min(this.VIEWPORT_SIZE, this.totalLines));
-            this.switchMobileTab("panelEditor");
+            this.renderViewport(0, Math.min(this.VIEWPORT_SIZE, this.totalLines), 0, true);
+            this.switchMobileTab("panelEditor", true);
 
             this.hideProgress();
             this.autoMsg(`파일 로드 완료 (${decoded.encoding.toUpperCase()} / ${fileSizeMB} MB / 총 ${this.totalLines.toLocaleString()}줄)`);
@@ -254,8 +262,8 @@ class EpubApp {
         }
     }
 
-    renderViewport(startLine, endLine, focusLocalLine = 0) {
-        if (this.lines && this.lines.length > 0 && this.currentViewEnd > this.currentViewStart && this.textArea.value) {
+    renderViewport(startLine, endLine, focusLocalLine = 0, forceNew = false) {
+        if (!forceNew && this.lines && this.lines.length > 0 && this.currentViewEnd > this.currentViewStart && this.textArea.value) {
             this.syncViewportToLines();
         }
 

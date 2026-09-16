@@ -1,4 +1,4 @@
-const CACHE_NAME = 'epub-studio-cache-v2.2.4';
+const CACHE_NAME = 'epub-studio-cache-v2.2.5';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -25,24 +25,18 @@ self.addEventListener('activate', (e) => {
     );
 });
 
+// Network-First 전략: 최신 배포 코드가 있으면 즉시 가져오고, 오프라인일 때만 캐시 사용!
 self.addEventListener('fetch', (e) => {
     if (e.request.method !== 'GET') return;
     e.respondWith(
-        caches.match(e.request).then((cached) => {
-            if (cached) {
-                fetch(e.request).then((res) => {
-                    if (res && res.status === 200) {
-                        caches.open(CACHE_NAME).then((c) => c.put(e.request, res.clone()));
-                    }
-                }).catch(() => {});
-                return cached;
-            }
-            return fetch(e.request).then((res) => {
-                if (!res || res.status !== 200 || res.type !== 'basic') return res;
-                const clone = res.clone();
+        fetch(e.request).then((networkRes) => {
+            if (networkRes && networkRes.status === 200) {
+                const clone = networkRes.clone();
                 caches.open(CACHE_NAME).then((c) => c.put(e.request, clone));
-                return res;
-            });
-        }).catch(() => caches.match('./index.html'))
+            }
+            return networkRes;
+        }).catch(() => {
+            return caches.match(e.request).then((cached) => cached || caches.match('./index.html'));
+        })
     );
 });
