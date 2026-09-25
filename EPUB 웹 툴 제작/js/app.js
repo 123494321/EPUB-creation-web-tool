@@ -483,6 +483,7 @@ class EpubApp {
             item.dataset.line = ch.lineNum;
 
             item.innerHTML = `
+                <span class="toc-order">${idx + 1}.</span>
                 <span class="toc-line">[L.${ch.lineNum}]</span>
                 <span class="toc-title" title="${this.escapeHtml(ch.title)}">${this.escapeHtml(ch.title)}</span>
                 <button class="btn-del-toc" title="이 목차만 삭제"><i class="fa-solid fa-times"></i></button>

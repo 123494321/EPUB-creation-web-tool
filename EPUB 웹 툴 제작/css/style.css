@@ -271,6 +271,7 @@ body {
 
 .toc-item:hover { background-color: #f1f5f9; }
 .toc-item.active { background-color: #e0f2fe; font-weight: 600; color: #0369a1; }
+.toc-order { color: #2563eb; font-weight: 700; font-family: monospace; font-size: 0.8rem; min-width: 22px; text-align: right; user-select: none; }
 .toc-line { color: #64748b; font-family: monospace; font-size: 0.8rem; }
 .toc-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
