@@ -1,4 +1,4 @@
-const CACHE_NAME = 'epub-studio-cache-v2.4.0';
+const CACHE_NAME = 'epub-studio-cache-v2.4.1';
 const STATIC_ASSETS = [
     './',
     './index.html',

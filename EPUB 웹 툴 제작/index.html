@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EPUB 전자책 제작 스튜디오 (v2.4.0)</title>
+    <title>EPUB 전자책 제작 스튜디오 (v2.4.1)</title>
 
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- App Styles -->
-    <link rel="stylesheet" href="css/style.css?v=2.4.0">
+    <link rel="stylesheet" href="css/style.css?v=2.4.1">
 
     <!-- JSZip for EPUB compression -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -37,7 +37,7 @@
             <div class="app-title">
                 <i class="fa-solid fa-book-open-reader" style="color: #2563eb;"></i>
                 <span>EPUB Studio</span>
-                <span class="app-version">v2.4.0</span>
+                <span class="app-version">v2.4.1</span>
                 <span id="uiModeBadge" class="ui-mode-badge">[감지 중...]</span>
             </div>
             <div class="header-right-action">
@@ -328,8 +328,8 @@
                         <span class="slider"></span>
                     </label>
                     <div class="config-info">
-                        <span class="config-title"><i class="fa-solid fa-tag" style="color: #d97706;"></i> 접두사 허용 모드 ([외전 1화], 【후일담 1화】)</span>
-                        <span class="config-desc">'1화'를 드래그했더라도 앞에 '[외전]', '(1부)', '【후일담】' 등의 말머리가 붙어 있는 줄도 유연하게 목차로 인식합니다.</span>
+                        <span class="config-title"><i class="fa-solid fa-tag" style="color: #d97706;"></i> 접두사 허용 모드 (외전 1화, [외전 1화], 【후일담 1화】)</span>
+                        <span class="config-desc">'1화'를 드래그했더라도 앞에 '외전', '후일담', '[외전]', '【특별편】' 등의 말머리가 붙어 있는 줄도 한 번에 목차로 인식합니다.</span>
                     </div>
                 </div>
 
@@ -361,8 +361,8 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/epub_generator.js?v=2.4.0"></script>
-    <script src="js/app.js?v=2.4.0"></script>
+    <script src="js/epub_generator.js?v=2.4.1"></script>
+    <script src="js/app.js?v=2.4.1"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>

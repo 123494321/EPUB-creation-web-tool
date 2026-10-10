@@ -38,7 +38,7 @@ class EpubApp {
     initWorker() {
         try {
             if (window.Worker) {
-                this.worker = new Worker('js/worker.js?v=2.4.0');
+                this.worker = new Worker('js/worker.js?v=2.4.1');
                 this.worker.onerror = (e) => console.warn('[App] Worker error:', e);
             }
         } catch (e) {

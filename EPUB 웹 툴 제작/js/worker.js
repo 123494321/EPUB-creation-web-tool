@@ -26,7 +26,10 @@ function handleAnalyzeToc(payload) {
     let prefix = '';
     let bracketClose = '';
     if (config.allowPrefix && !patternStr.startsWith('\\[')) {
-        prefix = '(?:[\\[\\(【<][^\\]\\)】>]+(?:[\\]\\)】>]\\s*|\\s+))?';
+        // Allows:
+        // 1) Bracketed tags: [외전] 1화, [외전 1화], (1부 1화), 【후일담 1화】
+        // 2) Plain text prefix words: 외전 1화, 특별 외전 1화, 후일담 1화, 외전: 1화, 외전 - 1화
+        prefix = '(?:(?:[\\[\\(【<][^\\]\\)】>]+(?:[\\]\\)】>]\\s*|\\s+))|(?:[가-힣a-zA-Z0-9]+(?:\\s+[가-힣a-zA-Z0-9]+)?\\s*[-:.]?\\s+))?';
         bracketClose = '[\\]\\)】>]?';
     }
 

@@ -7,7 +7,7 @@ class EpubGenerator {
     initWorker() {
         try {
             if (window.Worker) {
-                this.worker = new Worker('js/worker.js?v=2.4.0');
+                this.worker = new Worker('js/worker.js?v=2.4.1');
             }
         } catch (e) {
             this.worker = null;
