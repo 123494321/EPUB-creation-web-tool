@@ -140,6 +140,49 @@ body {
 
 .btn-load { background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
 .btn-analyze { background-color: #38bdf8; color: #082f49; }
+.analyze-btn-group {
+    display: inline-flex;
+    align-items: stretch;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.analyze-btn-group .btn-analyze {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    box-shadow: none;
+}
+.btn-toc-config {
+    background-color: #0284c7;
+    color: #ffffff;
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 6px 11px;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    position: relative;
+}
+.btn-toc-config:hover { background-color: #0369a1; }
+.btn-toc-config.active-config {
+    background-color: #ea580c;
+    color: #ffffff;
+}
+.btn-toc-config.active-config::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #fde047;
+    box-shadow: 0 0 4px #fde047;
+}
 .btn-manual { background-color: #7dd3fc; color: #0c4a6e; }
 .btn-sync { background-color: #fde047; color: #713f12; }
 .btn-del-single { background-color: #fdba74; color: #7c2d12; }
@@ -234,6 +277,174 @@ body {
 .editor-textarea.drag-over {
     background-color: #f0fdf4;
     outline: 2px dashed #22c55e;
+}
+
+/* In-Editor Search Bar & Controls */
+.panel-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-search-toggle {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-search-toggle:hover {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+}
+
+.editor-search-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+    animation: slideDown 0.15s ease-out;
+    position: relative;
+    z-index: 10;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.search-main-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
+.search-input-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    max-width: 320px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 3px 8px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.search-input-group:focus-within {
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.search-icon {
+    color: #94a3b8;
+    font-size: 0.8rem;
+}
+
+.search-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.82rem;
+    color: #1e293b;
+    width: 100%;
+    min-width: 80px;
+}
+
+.search-match-count {
+    font-size: 0.75rem;
+    color: #64748b;
+    white-space: nowrap;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    background: #f1f5f9;
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.btn-search-execute {
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 28px;
+    white-space: nowrap;
+    transition: background 0.15s ease;
+}
+
+.btn-search-execute:hover {
+    background: #1d4ed8;
+}
+
+.search-nav-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-search-nav {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.btn-search-nav:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+
+.btn-search-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.btn-search-close:hover {
+    background: #fee2e2;
+    color: #ef4444;
+    border-color: #fca5a5;
 }
 
 /* TOC Panel & Sub Toolbar */
@@ -438,6 +649,166 @@ body {
 .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #2563eb); width: 0%; transition: width 0.15s ease; }
 .progress-status { display: flex; justify-content: space-between; font-size: 0.85rem; color: #64748b; }
 
+/* TOC Config Modal Styling */
+.toc-config-card {
+    width: 520px;
+    max-width: 94vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+.toc-config-body {
+    padding: 16px 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.config-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 11px 13px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+.config-item:hover {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+}
+.config-item-highlight {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+.config-item-highlight:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+}
+.config-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.config-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.config-desc {
+    font-size: 0.79rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+.config-tip {
+    font-size: 0.77rem;
+    color: #0369a1;
+    background: #e0f2fe;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-top: 6px;
+    line-height: 1.4;
+    border-left: 3px solid #0284c7;
+}
+
+/* Custom Switch Toggle */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1;
+    transition: .2s;
+    border-radius: 24px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .2s;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+.switch input:checked + .slider {
+    background-color: #2563eb;
+}
+.switch input:checked + .slider:before {
+    transform: translateX(18px);
+}
+
+/* Spinbox */
+.spinbox-container {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+}
+.btn-spin {
+    background: #f1f5f9;
+    border: none;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #334155;
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: background 0.15s;
+}
+.btn-spin:hover {
+    background: #e2e8f0;
+}
+.btn-spin:active {
+    background: #cbd5e1;
+}
+.spinbox-input {
+    width: 52px;
+    height: 30px;
+    text-align: center;
+    border: none;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+    outline: none;
+    -moz-appearance: textfield;
+}
+.spinbox-input::-webkit-outer-spin-button,
+.spinbox-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.spinbox-unit {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    padding-right: 6px;
+}
+
 
 /* ==========================================================================
    📱 1. [스마트폰의 세로 UI] 👉 20배 초대형 타이탄 스케일 + 그랜드 모달 터치
@@ -513,6 +884,31 @@ body {
     .badge {
         font-size: 0.7rem !important;
         padding: 1px 6px !important;
+    }
+
+    .editor-search-bar {
+        padding: 4px 8px !important;
+        gap: 6px !important;
+    }
+    .search-input-group {
+        padding: 2px 6px !important;
+        max-width: 100% !important;
+    }
+    .search-input {
+        font-size: 0.78rem !important;
+    }
+    .search-match-count {
+        font-size: 0.7rem !important;
+    }
+    .btn-search-execute {
+        padding: 2px 7px !important;
+        font-size: 0.74rem !important;
+        height: 24px !important;
+    }
+    .btn-search-nav, .btn-search-close {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 0.72rem !important;
     }
 
     .editor-stats-text {

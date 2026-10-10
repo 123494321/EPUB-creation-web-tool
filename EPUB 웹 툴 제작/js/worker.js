@@ -14,20 +14,54 @@ self.addEventListener('message', async (e) => {
 });
 
 function handleAnalyzeToc(payload) {
-    const { text, sample } = payload;
+    const { text, sample, config = {} } = payload;
     if (!text || !sample) {
         self.postMessage({ type: 'ANALYZE_TOC_DONE', chapters: [] });
         return;
     }
+
     const escaped = sample.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const patternStr = escaped.replace(/\d+/g, '\\d+');
-    const regex = new RegExp(`^\\s*${patternStr}`, 'i');
-    const lines = text.split(/\r?\n/);
+    let patternStr = escaped.replace(/\d+/g, '\\d+');
+
+    let prefix = '';
+    let bracketClose = '';
+    if (config.allowPrefix && !patternStr.startsWith('\\[')) {
+        prefix = '(?:[\\[\\(【<][^\\]\\)】>]+(?:[\\]\\)】>]\\s*|\\s+))?';
+        bracketClose = '[\\]\\)】>]?';
+    }
+
+    let suffix = '';
+    if (config.fullLineOnly) {
+        suffix = `${bracketClose}[\\s\\u200b\\ufeff]*$`;
+    } else if (config.requireDelimiter !== false) {
+        if (/[-.:)\]]$/.test(patternStr)) {
+            suffix = `(?=[\\s\\u200b\\ufeff${bracketClose ? '\\]\\)】>' : ''}]|$|(?![0-9가-힣]))`;
+        } else if (/\\d\+$/.test(patternStr)) {
+            suffix = `${bracketClose}(?=[\\s\\u200b\\ufeff.:)\\-\\]]|$|(?![0-9가-힣a-zA-Z]))`;
+        } else {
+            suffix = `${bracketClose}(?=[\\s\\u200b\\ufeff.:)\\-\\]]|$|(?![가-힣a-zA-Z0-9]))`;
+        }
+    } else if (bracketClose) {
+        suffix = bracketClose;
+    }
+
+    const regex = new RegExp(`^[\\s\\u200b\\ufeff]*${prefix}${patternStr}${suffix}`, 'i');
+    const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = normalizedText.split('\n');
     const totalLines = lines.length;
     const matchedChapters = [];
     const notifyInterval = Math.max(1000, Math.floor(totalLines / 20));
+
+    const maxLen = (config.maxLength !== undefined && config.maxLength !== null && Number(config.maxLength) > 0)
+        ? Number(config.maxLength)
+        : 40;
+
     for (let i = 0; i < totalLines; i++) {
         const line = lines[i].trim();
+        if (!line) continue;
+        if (maxLen > 0 && line.length > maxLen) {
+            continue;
+        }
         if (regex.test(line)) {
             matchedChapters.push({ lineNum: i + 1, title: line });
         }
@@ -119,7 +153,7 @@ async function handleBuildEpub(payload) {
 function escapeHtml(text) { if (!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
 function processTextToHtml(rawText) {
     if (!rawText) return "";
-    const lines = rawText.split(/\r?\n/);
+    const lines = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
     const output = [];
     for (const line of lines) {
         const trimmed = line.trim();

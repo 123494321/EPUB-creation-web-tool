@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EPUB 전자책 제작 스튜디오 (v2.2.6)</title>
+    <title>EPUB 전자책 제작 스튜디오 (v2.4.0)</title>
 
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- App Styles -->
-    <link rel="stylesheet" href="css/style.css?v=2.2.6">
+    <link rel="stylesheet" href="css/style.css?v=2.4.0">
 
     <!-- JSZip for EPUB compression -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -37,7 +37,7 @@
             <div class="app-title">
                 <i class="fa-solid fa-book-open-reader" style="color: #2563eb;"></i>
                 <span>EPUB Studio</span>
-                <span class="app-version">v2.2.6</span>
+                <span class="app-version">v2.4.0</span>
                 <span id="uiModeBadge" class="ui-mode-badge">[감지 중...]</span>
             </div>
             <div class="header-right-action">
@@ -56,10 +56,15 @@
                 </button>
                 <input type="file" id="fileInput" accept=".txt" style="display: none;">
 
-                <!-- 목차 형식 분석 -->
-                <button id="btnLearnPattern" class="btn btn-analyze" title="선택 텍스트 패턴(예: 제1장) 분석하여 전체 목차 자동 생성">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span>목차 형식 분석</span>
-                </button>
+                <!-- 목차 형식 분석 및 고급 설정 그룹 -->
+                <div class="analyze-btn-group">
+                    <button id="btnLearnPattern" class="btn btn-analyze" title="선택 텍스트 패턴(예: 제1장) 분석하여 전체 목차 자동 생성">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> <span>목차 형식 분석</span>
+                    </button>
+                    <button id="btnOpenTocConfig" class="btn btn-toc-config" title="목차 분석 고급 패턴 및 오탐 방지 설정">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
+                </div>
 
                 <!-- 선택영역 목차 추가 -->
                 <button id="btnAddManualToc" class="btn btn-manual" title="선택 영역을 수동 목차로 추가">
@@ -119,9 +124,34 @@
         <!-- Panel 2: Main Text Editor -->
         <section id="panelEditor" class="workspace-panel panel-editor active">
             <div class="panel-header">
-                <span><i class="fa-solid fa-align-left"></i> 본문 에디터</span>
+                <div class="panel-header-left">
+                    <span><i class="fa-solid fa-align-left"></i> 본문 에디터</span>
+                    <button id="btnOpenSearch" class="btn btn-search-toggle btn-sm" title="본문 검색 (단축키: Ctrl+F)">
+                        <i class="fa-solid fa-magnifying-glass"></i> <span>검색</span>
+                    </button>
+                </div>
                 <span id="editorStats" class="editor-stats-text">텍스트를 불러오세요</span>
             </div>
+
+            <!-- Floating In-Editor Search Bar -->
+            <div id="editorSearchBar" class="editor-search-bar" style="display: none;">
+                <div class="search-main-controls">
+                    <div class="search-input-group">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="searchInput" class="search-input" placeholder="검색어 입력 후 [검색] 또는 Enter" autocomplete="off">
+                        <span id="searchMatchCount" class="search-match-count">0 / 0</span>
+                    </div>
+                    <button id="btnExecuteSearch" class="btn btn-search-execute" title="검색 실행 (단축키: Enter)">
+                        <i class="fa-solid fa-magnifying-glass"></i> <span>검색</span>
+                    </button>
+                    <div class="search-nav-group">
+                        <button id="btnSearchPrev" class="btn-search-nav" title="이전 일치 위치 (Shift+Enter)"><i class="fa-solid fa-chevron-up"></i></button>
+                        <button id="btnSearchNext" class="btn-search-nav" title="다음 일치 위치 (Enter)"><i class="fa-solid fa-chevron-down"></i></button>
+                    </div>
+                </div>
+                <button id="btnSearchClose" class="btn-search-close" title="닫기 (Esc)"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
             <textarea id="textArea" class="editor-textarea"
                 placeholder="여기에 텍스트 파일을 불러오거나 직접 붙여넣으세요...&#10;&#10;[팁]&#10;1. '파일 불러오기'로 소설 TXT 파일을 엽니다.&#10;2. '제1장...' 같은 목차를 마우스/터치로 드래그 후 [목차 형식 분석]을 누르면 전체 목차가 자동 생성됩니다.&#10;3. 목차를 클릭하면 해당 위치 본문으로 즉시 점프합니다."></textarea>
         </section>
@@ -228,6 +258,94 @@
         </div>
     </div>
 
+    <!-- TOC Pattern Config Modal -->
+    <div id="tocConfigModal" class="modal-overlay">
+        <div class="modal-card toc-config-card">
+            <div class="modal-header">
+                <span><i class="fa-solid fa-gear" style="color: #2563eb;"></i> 목차 분석 고급 패턴 설정</span>
+                <button id="btnCloseTocConfigModal" class="btn-close-modal" title="닫기 (Esc)"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body toc-config-body">
+                <!-- 1. 누적 병합 모드 -->
+                <div class="config-item config-item-highlight">
+                    <label class="switch">
+                        <input type="checkbox" id="cfgAppendMode">
+                        <span class="slider"></span>
+                    </label>
+                    <div class="config-info">
+                        <span class="config-title"><i class="fa-solid fa-layer-group" style="color: #16a34a;"></i> 기존 목차 유지 및 누적 병합 (Append Mode)</span>
+                        <span class="config-desc">체크 시 기존 목차를 유지한 채 새 패턴의 목차를 덧붙여 병합합니다.<br>(본편 ➡️ 후일담 ➡️ 외전 등 여러 패턴을 차례대로 수집할 때 사용)</span>
+                    </div>
+                </div>
+
+                <!-- 2. 최대 글자 수 제한 -->
+                <div class="config-item">
+                    <div class="config-info" style="width: 100%;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="config-title"><i class="fa-solid fa-ruler-horizontal" style="color: #0284c7;"></i> 목차 최대 글자 수 제한 (Max Length)</span>
+                            <div class="spinbox-container">
+                                <button type="button" id="btnSpinDown" class="btn-spin" title="1 감소"><i class="fa-solid fa-minus"></i></button>
+                                <input type="number" id="cfgMaxLength" class="spinbox-input" value="40" min="2" max="500">
+                                <button type="button" id="btnSpinUp" class="btn-spin" title="1 증가"><i class="fa-solid fa-plus"></i></button>
+                                <span class="spinbox-unit">자</span>
+                            </div>
+                        </div>
+                        <span class="config-desc" style="margin-top: 4px;">설정한 글자 수를 초과하는 긴 문장은 목차 분석 대상에서 원천 제외합니다.</span>
+                        <div class="config-tip">
+                            <i class="fa-solid fa-circle-info"></i> <strong>권장 팁</strong>: '1.', '2.' 등 숫자만 있는 목차는 100화 이상을 고려하여 <strong>4~5자</strong>로 제한하면 본문 서술(예: '1. 그가 말했다') 유입을 100% 차단할 수 있습니다. (기본값: 40자)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 단독 줄만 인정 -->
+                <div class="config-item">
+                    <label class="switch">
+                        <input type="checkbox" id="cfgFullLineOnly">
+                        <span class="slider"></span>
+                    </label>
+                    <div class="config-info">
+                        <span class="config-title"><i class="fa-solid fa-align-justify" style="color: #7c3aed;"></i> 단독 줄만 목차로 인정 (Full Line Match)</span>
+                        <span class="config-desc">해당 줄에 패턴 외의 다른 문장이 없는 독립된 줄만 목차로 채택합니다.<br>(본문 서술 문장의 오탐을 완벽히 차단하고 싶을 때 유용합니다.)</span>
+                    </div>
+                </div>
+
+                <!-- 4. 숫자 뒤 구분자 강제 -->
+                <div class="config-item">
+                    <label class="switch">
+                        <input type="checkbox" id="cfgRequireDelimiter" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <div class="config-info">
+                        <span class="config-title"><i class="fa-solid fa-shield-halved" style="color: #e11d48;"></i> 숫자 뒤 구분자 강제 ('3층', '7팀장' 차단)</span>
+                        <span class="config-desc">숫자 바로 뒤에 공백이나 마침표 등 구분자가 와야만 인정하며, 한글이나 영문이 바로 붙는 본문 단어의 오탐을 원천 차단합니다.</span>
+                    </div>
+                </div>
+
+                <!-- 5. 접두사 허용 모드 -->
+                <div class="config-item">
+                    <label class="switch">
+                        <input type="checkbox" id="cfgAllowPrefix">
+                        <span class="slider"></span>
+                    </label>
+                    <div class="config-info">
+                        <span class="config-title"><i class="fa-solid fa-tag" style="color: #d97706;"></i> 접두사 허용 모드 ([외전 1화], 【후일담 1화】)</span>
+                        <span class="config-desc">'1화'를 드래그했더라도 앞에 '[외전]', '(1부)', '【후일담】' 등의 말머리가 붙어 있는 줄도 유연하게 목차로 인식합니다.</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 10px;">
+                    <button type="button" id="btnResetTocConfig" class="btn btn-del-single" style="padding: 9px 14px;">
+                        <i class="fa-solid fa-rotate-left"></i> 기본값 복원
+                    </button>
+                    <button type="button" id="btnSaveTocConfig" class="btn btn-export" style="flex: 1; justify-content: center; padding: 9px 16px;">
+                        <i class="fa-solid fa-check"></i> 설정 저장 및 닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Progress Modal -->
     <div id="progressModal" class="modal-overlay">
         <div class="modal-card progress-card">
@@ -243,8 +361,8 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/epub_generator.js?v=2.2.6"></script>
-    <script src="js/app.js?v=2.2.6"></script>
+    <script src="js/epub_generator.js?v=2.4.0"></script>
+    <script src="js/app.js?v=2.4.0"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>

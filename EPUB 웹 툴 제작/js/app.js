@@ -22,6 +22,7 @@ class EpubApp {
         };
 
         this.viewMode = "detail";
+        this.tocConfig = this.loadTocConfig();
         this.worker = null;
         this.initWorker();
         this.initDOMElements();
@@ -31,12 +32,13 @@ class EpubApp {
         this.refreshTocList();
         this.refreshImageView();
         this.updateUIModeBadge();
+        this.updateTocConfigBadge();
     }
 
     initWorker() {
         try {
             if (window.Worker) {
-                this.worker = new Worker('js/worker.js');
+                this.worker = new Worker('js/worker.js?v=2.4.0');
                 this.worker.onerror = (e) => console.warn('[App] Worker error:', e);
             }
         } catch (e) {
@@ -51,6 +53,20 @@ class EpubApp {
         this.coverInput = document.getElementById("coverInput");
         this.editorStats = document.getElementById("editorStats");
         this.uiModeBadge = document.getElementById("uiModeBadge");
+
+        // In-Editor Search elements
+        this.btnOpenSearch = document.getElementById("btnOpenSearch");
+        this.editorSearchBar = document.getElementById("editorSearchBar");
+        this.searchInput = document.getElementById("searchInput");
+        this.searchMatchCount = document.getElementById("searchMatchCount");
+        this.btnExecuteSearch = document.getElementById("btnExecuteSearch");
+        this.btnSearchPrev = document.getElementById("btnSearchPrev");
+        this.btnSearchNext = document.getElementById("btnSearchNext");
+        this.btnSearchClose = document.getElementById("btnSearchClose");
+
+        this.searchMatches = [];
+        this.currentSearchIndex = -1;
+        this.currentSearchQuery = "";
 
         this.tocList = document.getElementById("tocList");
         this.tocCountBadge = document.getElementById("tocCountBadge");
@@ -86,6 +102,20 @@ class EpubApp {
         this.inputDate = document.getElementById("inputDate");
         this.coverPreviewName = document.getElementById("coverPreviewName");
         this.coverPreviewImg = document.getElementById("coverPreviewImg");
+
+        // TOC Config Modal Elements
+        this.btnOpenTocConfig = document.getElementById("btnOpenTocConfig");
+        this.tocConfigModal = document.getElementById("tocConfigModal");
+        this.btnCloseTocConfigModal = document.getElementById("btnCloseTocConfigModal");
+        this.btnSaveTocConfig = document.getElementById("btnSaveTocConfig");
+        this.btnResetTocConfig = document.getElementById("btnResetTocConfig");
+        this.cfgAppendMode = document.getElementById("cfgAppendMode");
+        this.cfgMaxLength = document.getElementById("cfgMaxLength");
+        this.btnSpinDown = document.getElementById("btnSpinDown");
+        this.btnSpinUp = document.getElementById("btnSpinUp");
+        this.cfgFullLineOnly = document.getElementById("cfgFullLineOnly");
+        this.cfgRequireDelimiter = document.getElementById("cfgRequireDelimiter");
+        this.cfgAllowPrefix = document.getElementById("cfgAllowPrefix");
 
         if (this.inputDate) this.inputDate.value = this.metaData.date;
     }
@@ -141,10 +171,104 @@ class EpubApp {
         window.addEventListener("resize", () => this.updateUIModeBadge());
         window.addEventListener("orientationchange", () => this.updateUIModeBadge());
 
+        // In-Editor Search Events
+        if (this.btnOpenSearch) {
+            this.btnOpenSearch.addEventListener("click", () => this.toggleSearchBar());
+        }
+        if (this.btnSearchClose) {
+            this.btnSearchClose.addEventListener("click", () => this.closeSearchBar());
+        }
+        if (this.btnExecuteSearch) {
+            this.btnExecuteSearch.addEventListener("click", () => this.executeSearch());
+        }
+        if (this.btnSearchNext) {
+            this.btnSearchNext.addEventListener("click", () => {
+                const query = this.searchInput.value.trim();
+                if (query && (query !== this.currentSearchQuery || this.searchMatches.length === 0)) {
+                    this.executeSearch();
+                } else {
+                    this.goToNextSearchMatch();
+                }
+            });
+        }
+        if (this.btnSearchPrev) {
+            this.btnSearchPrev.addEventListener("click", () => {
+                const query = this.searchInput.value.trim();
+                if (query && (query !== this.currentSearchQuery || this.searchMatches.length === 0)) {
+                    this.executeSearch();
+                } else {
+                    this.goToPrevSearchMatch();
+                }
+            });
+        }
+        if (this.searchInput) {
+            this.searchInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    const query = this.searchInput.value.trim();
+                    if (!query) return;
+                    if (query !== this.currentSearchQuery || this.searchMatches.length === 0) {
+                        this.executeSearch();
+                    } else {
+                        if (e.shiftKey) {
+                            this.goToPrevSearchMatch();
+                        } else {
+                            this.goToNextSearchMatch();
+                        }
+                    }
+                } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    this.closeSearchBar();
+                }
+            });
+        }
+
+        // TOC Config Modal Events
+        if (this.btnOpenTocConfig) {
+            this.btnOpenTocConfig.addEventListener("click", () => this.openTocConfigModal());
+        }
+        if (this.btnCloseTocConfigModal) {
+            this.btnCloseTocConfigModal.addEventListener("click", () => this.closeTocConfigModal());
+        }
+        if (this.tocConfigModal) {
+            this.tocConfigModal.addEventListener("click", (e) => {
+                if (e.target === this.tocConfigModal) this.closeTocConfigModal();
+            });
+        }
+        if (this.btnSaveTocConfig) {
+            this.btnSaveTocConfig.addEventListener("click", () => this.saveTocConfigFromModal());
+        }
+        if (this.btnResetTocConfig) {
+            this.btnResetTocConfig.addEventListener("click", () => this.resetTocConfig());
+        }
+        if (this.btnSpinDown && this.cfgMaxLength) {
+            this.btnSpinDown.addEventListener("click", () => {
+                const cur = parseInt(this.cfgMaxLength.value, 10) || 40;
+                this.cfgMaxLength.value = Math.max(2, cur - 1);
+            });
+        }
+        if (this.btnSpinUp && this.cfgMaxLength) {
+            this.btnSpinUp.addEventListener("click", () => {
+                const cur = parseInt(this.cfgMaxLength.value, 10) || 40;
+                this.cfgMaxLength.value = Math.min(500, cur + 1);
+            });
+        }
+
         window.addEventListener("keydown", (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+                e.preventDefault();
+                this.openSearchBar();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
                 e.preventDefault();
                 this.openSetupWindow();
+            } else if (e.key === "Escape") {
+                if (this.tocConfigModal && this.tocConfigModal.classList.contains("active")) {
+                    this.closeTocConfigModal();
+                } else if (this.publishModal && this.publishModal.classList.contains("active")) {
+                    this.closePublishModal();
+                } else if (this.editorSearchBar && this.editorSearchBar.style.display !== "none") {
+                    this.closeSearchBar();
+                }
             }
         });
     }
@@ -216,8 +340,8 @@ class EpubApp {
             this.updateProgress(50, "텍스트 파싱 중...");
             const decoded = this.detectAndDecodeText(buffer);
 
-            this.fullText = decoded.text;
-            this.lines = this.fullText.split(/\r?\n/);
+            this.fullText = decoded.text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            this.lines = this.fullText.split('\n');
             this.totalLines = this.lines.length;
             this.currentViewStart = 0;
             this.currentViewEnd = 0;
@@ -246,7 +370,7 @@ class EpubApp {
     syncViewportToLines() {
         if (!this.lines || this.lines.length === 0) return;
         const currentViewportText = this.textArea.value;
-        const updatedViewportLines = currentViewportText.split(/\r?\n/);
+        const updatedViewportLines = currentViewportText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
         const deleteCount = Math.max(0, this.currentViewEnd - this.currentViewStart);
 
         this.lines.splice(this.currentViewStart, deleteCount, ...updatedViewportLines);
@@ -262,7 +386,50 @@ class EpubApp {
         }
     }
 
-    renderViewport(startLine, endLine, focusLocalLine = 0, forceNew = false) {
+    scrollToCharPosition(charPos, length = 0) {
+        if (!this.textArea) return;
+
+        if (window.innerHeight >= window.innerWidth || window.innerWidth <= 900) {
+            this.switchMobileTab("panelEditor");
+        }
+
+        const textVal = this.textArea.value;
+        const safeCharPos = Math.max(0, Math.min(textVal.length, charPos));
+        const safeLen = Math.max(0, Math.min(textVal.length - safeCharPos, length));
+
+        const performScroll = () => {
+            this.textArea.focus();
+            this.textArea.setSelectionRange(safeCharPos, safeCharPos + safeLen);
+
+            const computed = window.getComputedStyle(this.textArea);
+            const lineHeight = parseFloat(computed.lineHeight) || 28.8;
+            const paddingLeft = parseFloat(computed.paddingLeft) || 14;
+            const paddingRight = parseFloat(computed.paddingRight) || 14;
+            const clientW = this.textArea.clientWidth || 300;
+            const contentWidth = Math.max(80, clientW - paddingLeft - paddingRight);
+            const fontSize = parseFloat(computed.fontSize) || 16;
+            const charsPerLine = Math.max(8, Math.floor(contentWidth / (fontSize * 0.82)));
+
+            const textBefore = textVal.substring(0, safeCharPos);
+            const linesBefore = textBefore.split('\n');
+            let visualLinesBefore = 0;
+            for (let i = 0; i < linesBefore.length; i++) {
+                const lineLen = linesBefore[i].length;
+                visualLinesBefore += Math.max(1, Math.ceil(lineLen / charsPerLine));
+            }
+
+            const clientH = this.textArea.clientHeight || 400;
+            const targetScroll = Math.max(0, (visualLinesBefore * lineHeight) - (clientH / 2) + (lineHeight / 2));
+            this.textArea.scrollTop = targetScroll;
+        };
+
+        performScroll();
+        requestAnimationFrame(() => {
+            performScroll();
+        });
+    }
+
+    renderViewport(startLine, endLine, focusLocalLine = 0, forceNew = false, focusLength = 0) {
         if (!forceNew && this.lines && this.lines.length > 0 && this.currentViewEnd > this.currentViewStart && this.textArea.value) {
             this.syncViewportToLines();
         }
@@ -282,9 +449,7 @@ class EpubApp {
             for (let i = 0; i < Math.min(focusLocalLine, viewportLines.length); i++) {
                 charPos += viewportLines[i].length + 1;
             }
-            this.textArea.focus();
-            this.textArea.setSelectionRange(charPos, charPos);
-            this.textArea.scrollTop = Math.max(0, (focusLocalLine - 5) * 24);
+            this.scrollToCharPosition(charPos, focusLength);
         } else {
             this.textArea.scrollTop = 0;
         }
@@ -340,9 +505,26 @@ class EpubApp {
                 } else if (type === 'ANALYZE_TOC_DONE') {
                     this.worker.removeEventListener('message', onMessage);
                     this.hideProgress();
-                    this.chapters = chapters;
-                    this.refreshTocList();
-                    this.autoMsg(`${this.chapters.length}개의 목차가 전체 본문에서 자동 생성되었습니다.`);
+
+                    if (this.tocConfig.appendMode && this.chapters && this.chapters.length > 0) {
+                        const map = new Map();
+                        for (const c of this.chapters) {
+                            map.set(c.lineNum, c.title);
+                        }
+                        for (const c of chapters) {
+                            map.set(c.lineNum, c.title);
+                        }
+                        const merged = Array.from(map.entries()).map(([lineNum, title]) => ({ lineNum, title }));
+                        merged.sort((a, b) => a.lineNum - b.lineNum);
+                        const prevCount = this.chapters.length;
+                        this.chapters = merged;
+                        this.refreshTocList();
+                        this.autoMsg(`새 패턴 목차 ${chapters.length}개 발견 (기존 ${prevCount}개 ➡️ 총 ${this.chapters.length}개 누적 병합 완료)`);
+                    } else {
+                        this.chapters = chapters;
+                        this.refreshTocList();
+                        this.autoMsg(`${this.chapters.length}개의 목차가 전체 본문에서 자동 생성되었습니다.`);
+                    }
                 } else if (type === 'ERROR') {
                     this.worker.removeEventListener('message', onMessage);
                     this.hideProgress();
@@ -350,7 +532,14 @@ class EpubApp {
                 }
             };
             this.worker.addEventListener('message', onMessage);
-            this.worker.postMessage({ type: 'ANALYZE_TOC', payload: { text: targetText, sample } });
+            this.worker.postMessage({
+                type: 'ANALYZE_TOC',
+                payload: {
+                    text: targetText,
+                    sample,
+                    config: this.tocConfig
+                }
+            });
         }
     }
 
@@ -378,12 +567,17 @@ class EpubApp {
 
     goToChapterLine(targetLine, title) {
         const targetIndex = targetLine - 1;
+        const titleLen = title ? title.length : 0;
+
+        if (window.innerHeight >= window.innerWidth || window.innerWidth <= 900) {
+            this.switchMobileTab("panelEditor");
+        }
 
         if (targetIndex < this.currentViewStart || targetIndex >= this.currentViewEnd) {
             const newStart = Math.max(0, targetIndex - 200);
             const newEnd = Math.min(this.totalLines, newStart + this.VIEWPORT_SIZE);
             const localLine = targetIndex - newStart;
-            this.renderViewport(newStart, newEnd, localLine);
+            this.renderViewport(newStart, newEnd, localLine, false, titleLen);
         } else {
             const localLine = targetIndex - this.currentViewStart;
             const viewportLines = this.lines.slice(this.currentViewStart, this.currentViewEnd);
@@ -391,13 +585,7 @@ class EpubApp {
             for (let i = 0; i < Math.min(localLine, viewportLines.length); i++) {
                 charPos += viewportLines[i].length + 1;
             }
-            this.textArea.focus();
-            this.textArea.setSelectionRange(charPos, charPos + (title ? title.length : 0));
-            this.textArea.scrollTop = Math.max(0, (localLine - 5) * 24);
-        }
-
-        if (window.innerHeight >= window.innerWidth) {
-            this.switchMobileTab("panelEditor");
+            this.scrollToCharPosition(charPos, titleLen);
         }
     }
 
@@ -711,6 +899,110 @@ class EpubApp {
         this.publishModal.classList.remove("active");
     }
 
+    openTocConfigModal() {
+        this.syncTocConfigModalInputs();
+        if (this.tocConfigModal) {
+            this.tocConfigModal.classList.add("active");
+        }
+    }
+
+    closeTocConfigModal() {
+        if (this.tocConfigModal) {
+            this.tocConfigModal.classList.remove("active");
+        }
+    }
+
+    loadTocConfig() {
+        const DEFAULT_CONFIG = {
+            appendMode: false,
+            maxLength: 40,
+            fullLineOnly: false,
+            requireDelimiter: true,
+            allowPrefix: false
+        };
+        try {
+            const saved = localStorage.getItem('epub_studio_toc_config');
+            if (saved) {
+                return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+            }
+        } catch (e) {
+            console.warn('[App] Failed to load toc config from localStorage:', e);
+        }
+        return { ...DEFAULT_CONFIG };
+    }
+
+    syncTocConfigModalInputs() {
+        if (this.cfgAppendMode) this.cfgAppendMode.checked = !!this.tocConfig.appendMode;
+        if (this.cfgMaxLength) this.cfgMaxLength.value = this.tocConfig.maxLength || 40;
+        if (this.cfgFullLineOnly) this.cfgFullLineOnly.checked = !!this.tocConfig.fullLineOnly;
+        if (this.cfgRequireDelimiter) this.cfgRequireDelimiter.checked = (this.tocConfig.requireDelimiter !== false);
+        if (this.cfgAllowPrefix) this.cfgAllowPrefix.checked = !!this.tocConfig.allowPrefix;
+    }
+
+    saveTocConfigFromModal() {
+        if (this.cfgAppendMode) this.tocConfig.appendMode = this.cfgAppendMode.checked;
+        if (this.cfgMaxLength) {
+            const val = parseInt(this.cfgMaxLength.value, 10);
+            this.tocConfig.maxLength = isNaN(val) ? 40 : Math.max(2, Math.min(500, val));
+        }
+        if (this.cfgFullLineOnly) this.tocConfig.fullLineOnly = this.cfgFullLineOnly.checked;
+        if (this.cfgRequireDelimiter) this.tocConfig.requireDelimiter = this.cfgRequireDelimiter.checked;
+        if (this.cfgAllowPrefix) this.tocConfig.allowPrefix = this.cfgAllowPrefix.checked;
+
+        this.saveTocConfig(true);
+        this.closeTocConfigModal();
+    }
+
+    saveTocConfig(notify = true) {
+        try {
+            localStorage.setItem('epub_studio_toc_config', JSON.stringify(this.tocConfig));
+            if (notify) {
+                this.autoMsg("목차 분석 고급 설정이 저장되었습니다.");
+            }
+        } catch (e) {
+            console.warn('[App] Failed to save toc config:', e);
+        }
+        this.updateTocConfigBadge();
+    }
+
+    resetTocConfig() {
+        this.tocConfig = {
+            appendMode: false,
+            maxLength: 40,
+            fullLineOnly: false,
+            requireDelimiter: true,
+            allowPrefix: false
+        };
+        this.syncTocConfigModalInputs();
+        this.saveTocConfig(false);
+        this.autoMsg("목차 분석 설정이 기본값으로 초기화되었습니다.");
+    }
+
+    updateTocConfigBadge() {
+        if (!this.btnOpenTocConfig) return;
+        const isCustom = (
+            !!this.tocConfig.appendMode ||
+            Number(this.tocConfig.maxLength) !== 40 ||
+            !!this.tocConfig.fullLineOnly ||
+            this.tocConfig.requireDelimiter === false ||
+            !!this.tocConfig.allowPrefix
+        );
+
+        if (isCustom) {
+            this.btnOpenTocConfig.classList.add("active-config");
+            const tags = [];
+            if (this.tocConfig.appendMode) tags.push("누적병합");
+            if (Number(this.tocConfig.maxLength) !== 40) tags.push(`최대${this.tocConfig.maxLength}자`);
+            if (this.tocConfig.fullLineOnly) tags.push("단독줄");
+            if (this.tocConfig.requireDelimiter === false) tags.push("구분자해제");
+            if (this.tocConfig.allowPrefix) tags.push("접두사허용");
+            this.btnOpenTocConfig.title = `목차 분석 설정 (맞춤 설정 적용 중: ${tags.join(', ')})`;
+        } else {
+            this.btnOpenTocConfig.classList.remove("active-config");
+            this.btnOpenTocConfig.title = "목차 분석 고급 패턴 및 오탐 방지 설정 (기본값)";
+        }
+    }
+
     async handleCoverSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -748,7 +1040,7 @@ class EpubApp {
         this.metaData.publisher = this.inputPublisher.value.trim();
         this.metaData.date = this.inputDate.value.trim() || new Date().toISOString().split('T')[0];
 
-        const allLines = this.lines.length > 0 ? this.lines : this.textArea.value.split(/\r?\n/);
+        const allLines = this.lines.length > 0 ? this.lines : this.textArea.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
         const totalLinesCount = allLines.length;
 
         const epubChapters = [];
@@ -862,6 +1154,153 @@ class EpubApp {
 
     hideProgress() {
         this.progressModal.classList.remove("active");
+    }
+
+    // In-Editor Search Methods (Ctrl+F)
+    toggleSearchBar() {
+        if (!this.editorSearchBar) return;
+        if (this.editorSearchBar.style.display === "none") {
+            this.openSearchBar();
+        } else {
+            this.closeSearchBar();
+        }
+    }
+
+    openSearchBar() {
+        if (!this.editorSearchBar) return;
+        this.editorSearchBar.style.display = "flex";
+        
+        // If text is selected in textarea, use it as query
+        const selStart = this.textArea.selectionStart;
+        const selEnd = this.textArea.selectionEnd;
+        if (selEnd > selStart) {
+            const selected = this.textArea.value.substring(selStart, selEnd).trim();
+            if (selected && selected.length < 50) {
+                this.searchInput.value = selected;
+            }
+        }
+        
+        this.searchInput.focus();
+        this.searchInput.select();
+    }
+
+    closeSearchBar() {
+        if (!this.editorSearchBar) return;
+        this.editorSearchBar.style.display = "none";
+        this.searchMatches = [];
+        this.currentSearchIndex = -1;
+        this.currentSearchQuery = "";
+        if (this.searchMatchCount) this.searchMatchCount.textContent = "0 / 0";
+        this.textArea.focus();
+    }
+
+    executeSearch() {
+        const query = this.searchInput.value.trim();
+        this.searchMatches = [];
+        this.currentSearchIndex = -1;
+        this.currentSearchQuery = query;
+
+        if (!query) {
+            if (this.searchMatchCount) this.searchMatchCount.textContent = "0 / 0";
+            return;
+        }
+
+        if (!this.lines || this.lines.length === 0) {
+            if (this.searchMatchCount) this.searchMatchCount.textContent = "0 / 0";
+            this.autoMsg("검색할 본문 텍스트가 없습니다.");
+            return;
+        }
+
+        const lowerQuery = query.toLowerCase();
+        for (let i = 0; i < this.lines.length; i++) {
+            const line = this.lines[i];
+            const lowerLine = line.toLowerCase();
+            let col = lowerLine.indexOf(lowerQuery);
+            while (col !== -1) {
+                this.searchMatches.push({
+                    globalLine: i + 1,
+                    lineIndex: i,
+                    col: col,
+                    length: query.length
+                });
+                col = lowerLine.indexOf(lowerQuery, col + query.length);
+            }
+        }
+
+        const total = this.searchMatches.length;
+        if (total === 0) {
+            if (this.searchMatchCount) this.searchMatchCount.textContent = "0 / 0";
+            this.autoMsg(`'${query}' 검색 결과가 없습니다.`);
+            return;
+        }
+
+        // Find match closest to current viewport
+        let bestIndex = 0;
+        for (let i = 0; i < total; i++) {
+            if (this.searchMatches[i].lineIndex >= this.currentViewStart) {
+                bestIndex = i;
+                break;
+            }
+        }
+
+        this.currentSearchIndex = bestIndex;
+        this.updateSearchMatchUI();
+        this.goToCurrentSearchMatch();
+    }
+
+    goToNextSearchMatch() {
+        if (!this.searchMatches || this.searchMatches.length === 0) return;
+        this.currentSearchIndex = (this.currentSearchIndex + 1) % this.searchMatches.length;
+        this.updateSearchMatchUI();
+        this.goToCurrentSearchMatch();
+    }
+
+    goToPrevSearchMatch() {
+        if (!this.searchMatches || this.searchMatches.length === 0) return;
+        this.currentSearchIndex = (this.currentSearchIndex - 1 + this.searchMatches.length) % this.searchMatches.length;
+        this.updateSearchMatchUI();
+        this.goToCurrentSearchMatch();
+    }
+
+    updateSearchMatchUI() {
+        if (!this.searchMatchCount) return;
+        const total = this.searchMatches.length;
+        if (total === 0 || this.currentSearchIndex === -1) {
+            this.searchMatchCount.textContent = "0 / 0";
+        } else {
+            this.searchMatchCount.textContent = `${this.currentSearchIndex + 1} / ${total.toLocaleString()}`;
+        }
+    }
+
+    goToCurrentSearchMatch() {
+        if (this.currentSearchIndex < 0 || this.currentSearchIndex >= this.searchMatches.length) return;
+        const match = this.searchMatches[this.currentSearchIndex];
+        const targetLineIndex = match.lineIndex;
+
+        // Check if target is inside current viewport
+        if (targetLineIndex < this.currentViewStart || targetLineIndex >= this.currentViewEnd) {
+            const newStart = Math.max(0, targetLineIndex - 200);
+            const newEnd = Math.min(this.totalLines, newStart + this.VIEWPORT_SIZE);
+            const localLine = targetLineIndex - newStart;
+            this.renderViewport(newStart, newEnd, 0);
+            
+            const viewportLines = this.lines.slice(this.currentViewStart, this.currentViewEnd);
+            let charPos = 0;
+            for (let i = 0; i < localLine; i++) {
+                charPos += viewportLines[i].length + 1;
+            }
+            charPos += match.col;
+            this.scrollToCharPosition(charPos, match.length);
+        } else {
+            const localLine = targetLineIndex - this.currentViewStart;
+            const viewportLines = this.lines.slice(this.currentViewStart, this.currentViewEnd);
+            let charPos = 0;
+            for (let i = 0; i < localLine; i++) {
+                charPos += viewportLines[i].length + 1;
+            }
+            charPos += match.col;
+            this.scrollToCharPosition(charPos, match.length);
+        }
     }
 
     escapeHtml(text) {
